@@ -1,4 +1,5 @@
 import api from "./api";
+import axios from "axios";
 
 interface ProfileUpdateData {
   name?: string;
@@ -26,32 +27,74 @@ export const userService = {
    * Update user profile
    */
   async updateProfile(data: ProfileUpdateData) {
-    // If we have a file, we need to use FormData
-    if (data.avatar) {
-      const formData = new FormData();
-      if (data.name) formData.append("name", data.name);
-      if (data.email) formData.append("email", data.email);
-      if (data.username) formData.append("username", data.username);
-      formData.append("avatar", data.avatar);
+    try {
+      // If we have a file, we need to use FormData
+      if (data.avatar) {
+        const formData = new FormData();
+        if (data.name) formData.append("name", data.name);
+        if (data.email) formData.append("email", data.email);
+        if (data.username) formData.append("username", data.username);
+        formData.append("avatar", data.avatar);
 
-      const response = await api.post("/user/profile", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+        const response = await api.post("/user/profile", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response.data;
+      }
+
+      // Regular JSON request
+      const response = await api.put("/user/profile", data);
       return response.data;
+    } catch (error) {
+      // Enhanced error handling
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error(
+            "Network error. Please check your connection and try again.",
+          );
+        }
+        // Handle validation errors
+        if (error.response.status === 422 && error.response.data?.errors) {
+          const firstError = Object.values(error.response.data.errors)[0];
+          if (Array.isArray(firstError) && firstError.length > 0) {
+            throw new Error(firstError[0]);
+          }
+        }
+      }
+      throw error;
     }
-
-    // Regular JSON request
-    const response = await api.put("/user/profile", data);
-    return response.data;
   },
 
   /**
    * Update user password
    */
   async updatePassword(data: PasswordUpdateData) {
-    const response = await api.put("/user/password", data);
-    return response.data;
+    try {
+      const response = await api.put("/user/password", data);
+      return response.data;
+    } catch (error) {
+      // Enhanced error handling
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error(
+            "Network error. Please check your connection and try again.",
+          );
+        }
+        // Handle validation errors
+        if (error.response.status === 422 && error.response.data?.errors) {
+          const firstError = Object.values(error.response.data.errors)[0];
+          if (Array.isArray(firstError) && firstError.length > 0) {
+            throw new Error(firstError[0]);
+          }
+        }
+        // Handle incorrect current password
+        if (error.response.status === 403) {
+          throw new Error("Current password is incorrect.");
+        }
+      }
+      throw error;
+    }
   },
 };

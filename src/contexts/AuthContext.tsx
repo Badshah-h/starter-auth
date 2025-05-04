@@ -32,24 +32,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
-
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(tokenStorage.getToken());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Define logout function before it's used
+  const logout = async () => {
+    try {
+      setIsLoading(true);
+      await authService.logout();
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      tokenStorage.removeToken();
+      setUser(null);
+      setToken(null);
+      setIsLoading(false);
+      navigate("/");
+    }
+  };
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -89,7 +97,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       tokenStorage.setToken(authToken, remember);
       setUser(userData);
       setToken(authToken);
-      navigate("/dashboard");
+      navigate("/profile");
     } catch (err) {
       setError(
         err instanceof Error
@@ -123,21 +131,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const logout = async () => {
-    try {
-      setIsLoading(true);
-      await authService.logout();
-    } catch (err) {
-      console.error("Logout error", err);
-    } finally {
-      tokenStorage.removeToken();
-      setUser(null);
-      setToken(null);
-      setIsLoading(false);
-      navigate("/");
-    }
-  };
-
   const clearError = () => {
     setError(null);
   };
@@ -156,3 +149,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+// Define the useAuth hook after the AuthProvider
+const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+
+// Export the hook and provider separately
+export { useAuth, AuthProvider };

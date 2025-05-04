@@ -9,6 +9,14 @@ import { tokenStorage } from "../utils/tokenStorage";
 // Define the base API URL - this would point to your Laravel backend
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
+// Function to refresh CSRF token
+async function refreshCSRFToken() {
+  const baseURL = API_URL.replace(/\/api$/, "");
+  await axios.get(`${baseURL}/sanctum/csrf-cookie`, {
+    withCredentials: true,
+  });
+}
+
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -41,16 +49,25 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized errors (token expired)
     if (error.response?.status === 401 && originalRequest) {
-      // If token refresh is implemented, you could handle it here
-      // For now, we'll just log the user out
-      tokenStorage.removeToken();
-      window.location.href = "/";
+      // Try to refresh CSRF token and retry the request
+      try {
+        await refreshCSRFToken();
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, log the user out
+        tokenStorage.removeToken();
+        window.location.href = "/";
+      }
     }
 
     // Handle 419 CSRF token mismatch (Laravel specific)
-    if (error.response?.status === 419) {
-      // Could implement CSRF token refresh here
-      console.error("CSRF token mismatch");
+    if (error.response?.status === 419 && originalRequest) {
+      try {
+        await refreshCSRFToken();
+        return api(originalRequest);
+      } catch (refreshError) {
+        console.error("CSRF token refresh failed", refreshError);
+      }
     }
 
     // Handle 429 Too Many Requests (rate limiting)

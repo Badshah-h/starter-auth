@@ -30,9 +30,11 @@ const Home = () => {
   }) => {
     try {
       const { email, password, rememberMe } = data;
-      await useAuth().login(email, password, rememberMe);
+      const auth = useAuth();
+      await auth.login(email, password, rememberMe);
     } catch (err) {
       // Error is handled by the auth context
+      console.error("Login error:", err);
     }
   };
 
@@ -44,9 +46,11 @@ const Home = () => {
   }) => {
     try {
       const { name, email, password } = data;
-      await useAuth().register(name, email, password);
+      const auth = useAuth();
+      await auth.register(name, email, password);
     } catch (err) {
       // Error is handled by the auth context
+      console.error("Registration error:", err);
     }
   };
 
@@ -59,32 +63,22 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-md p-4">
-        <Card className="w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
-            <CardDescription>
-              Sign in to your account or create a new one
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert
-                className={`mb-4 ${error.includes("successful") ? "bg-green-50 text-green-800 border-green-200" : "bg-red-50 text-red-800 border-red-200"}`}
-                onClick={clearError}
-              >
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <AuthForm
-              onLogin={handleLogin}
-              onRegister={handleRegister}
-              isLoading={isLoading}
-            />
-          </CardContent>
-        </Card>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      {error && (
+        <div className="fixed top-4 right-4 z-50 max-w-md">
+          <Alert
+            className={`${error.includes("successful") ? "bg-green-50 text-green-800 border-green-200" : "bg-red-50 text-red-800 border-red-200"} shadow-lg`}
+            onClick={clearError}
+          >
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+      <AuthForm
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        isLoading={isLoading}
+      />
     </div>
   );
 };
